@@ -4,19 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Рассылка Bot</title>
-    <!-- Подключаем Telegram WebApp API -->
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Иконки Lucide для легкости -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --bg-glow-1: rgba(123, 97, 255, 0.12);
-            --bg-glow-2: rgba(0, 240, 255, 0.06);
-            --glass-bg: rgba(10, 10, 12, 0.45);
-            --glass-border: rgba(255, 255, 255, 0.06);
+            --bg-glow-1: rgba(123, 97, 255, 0.10);
+            --bg-glow-2: rgba(0, 180, 255, 0.04);
+            /* Haze Materials - dark Regular (более плотный матовый фон) */
+            --glass-bg: rgba(18, 18, 24, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-secondary: rgba(255, 255, 255, 0.55);
             --accent: #7b61ff;
+            --accent-glow: rgba(123, 97, 255, 0.35);
         }
 
         * {
@@ -28,10 +30,10 @@
         }
 
         body {
-            background-color: #030304;
+            background-color: #060608;
             background-image: 
-                radial-gradient(circle at 15% 20%, var(--bg-glow-1) 0%, transparent 50%),
-                radial-gradient(circle at 85% 80%, var(--bg-glow-2) 0%, transparent 50%);
+                radial-gradient(circle at 10% 20%, var(--bg-glow-1) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, var(--bg-glow-2) 0%, transparent 50%);
             background-attachment: fixed;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--text-primary);
@@ -44,44 +46,43 @@
             overflow-x: hidden;
         }
 
-        /* Эффект матового ультратонкого стекла (Haze Blur) */
+        /* Контейнер Haze - dark Regular */
         .haze-container {
             width: 100%;
-            max-width: 420px;
+            max-width: 400px;
             background: var(--glass-bg);
-            backdrop-filter: blur(24px) saturate(190%);
-            -webkit-backdrop-filter: blur(24px) saturate(190%);
+            backdrop-filter: blur(20px) saturate(170%);
+            -webkit-backdrop-filter: blur(20px) saturate(170%);
             border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 24px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
             opacity: 0;
-            transform: scale(0.95) translateY(10px);
+            transform: translateY(12px);
             display: none;
         }
 
         .haze-container.active {
             display: block;
             opacity: 1;
-            transform: scale(1) translateY(0);
+            transform: translateY(0);
         }
 
-        /* Типографика */
         h2 {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 600;
             margin-bottom: 8px;
             text-align: center;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.4px;
         }
 
         p.subtitle {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
             text-align: center;
             margin-bottom: 24px;
-            line-height: 1.4;
+            line-height: 1.45;
         }
 
         /* Кнопки */
@@ -94,14 +95,14 @@
         .btn {
             flex: 1;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             color: var(--text-primary);
             padding: 14px 20px;
             border-radius: 14px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -110,103 +111,74 @@
 
         .btn:active {
             transform: scale(0.97);
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .btn-primary {
             background: var(--accent);
             border: none;
+            box-shadow: 0 4px 16px var(--accent-glow);
         }
 
         .btn-primary:active {
             background: #6246ea;
         }
 
-        .btn-disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        /* Иконки платежей */
-        .payment-option {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
+        /* Стилизация форм */
+        .input-group {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
         }
 
-        .payment-option:hover:not(.disabled) {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.15);
+        .input-group label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-left: 4px;
         }
 
-        .payment-option.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .payment-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .payment-icon {
-            width: 36px;
-            height: 36px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Поля ввода */
         .input-field {
             width: 100%;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            padding: 14px;
+            padding: 12px 14px;
             color: var(--text-primary);
-            font-size: 15px;
+            font-size: 14px;
             outline: none;
-            transition: border-color 0.3s;
-            margin-bottom: 16px;
+            transition: all 0.3s;
         }
 
         .input-field:focus {
             border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        /* Шаги рассылки */
+        /* Шаги настройки */
         .step-container {
             display: none;
-            animation: fadeIn 0.4s ease forwards;
+            animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
 
         .step-container.active {
             display: block;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Стилизация папок */
+        /* Список папок */
         .folders-list {
             margin-top: 12px;
             background: rgba(255, 255, 255, 0.02);
             border-radius: 14px;
             padding: 8px;
-            max-height: 150px;
+            max-height: 160px;
             overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
@@ -222,14 +194,14 @@
         }
 
         .folder-item:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
         }
 
         .folder-checkbox {
             width: 18px;
             height: 18px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -240,110 +212,115 @@
             border-color: var(--accent);
         }
 
-        /* Замочек на авторизации */
-        .lock-container {
-            text-align: center;
-            margin-bottom: 16px;
-            color: #ff5e5e;
+        .folder-item.selected .folder-checkbox::after {
+            content: "✓";
+            font-size: 11px;
+            color: white;
+        }
+
+        /* Экран статуса запущенной рассылки */
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin: 16px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: width 0.4s ease;
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. Экран покупки подписки -->
+    <!-- 1. Главный экран: Купить подписку -->
     <div id="screen-subscription" class="haze-container">
-        <h2>Купить подписку?</h2>
-        <p class="subtitle">Для доступа к инструментам продвинутой рассылки требуется активировать аккаунт.</p>
+        <h2 style="margin-top: 8px;">Купить подписку?</h2>
+        <p class="subtitle">Для старта автоматизированной рассылки по чатам и папкам необходимо активировать аккаунт.</p>
         <div class="btn-group">
-            <button class="btn" onclick="goToAuth(false)">Позже</button>
-            <button class="btn btn-primary" onclick="showPayments()">Да</button>
+            <button class="btn" onclick="switchScreen('screen-later')">Позже</button>
+            <button class="btn btn-primary" onclick="initiatePayment()"><i data-lucide="star" style="width: 16px; color:#ffb800;"></i> Купить за 50 Stars</button>
         </div>
     </div>
 
-    <!-- 2. Выбор способа оплаты -->
-    <div id="screen-payments" class="haze-container">
-        <h2>Способ оплаты</h2>
-        <p class="subtitle">Выберите наиболее удобный для вас вариант</p>
-        
-        <div class="payment-option" onclick="payWithStars()">
-            <div class="payment-left">
-                <div class="payment-icon"><i data-lucide="star" style="color: #ffb800;"></i></div>
-                <div>
-                    <div>Telegram Stars</div>
-                    <div style="font-size: 11px; color: var(--text-secondary)">Быстрая оплата внутри Telegram</div>
-                </div>
-            </div>
-            <i data-lucide="chevron-right"></i>
+    <!-- 2. Экран «Позже» -->
+    <div id="screen-later" class="haze-container">
+        <div style="text-align: center; margin-bottom: 16px; color: #ff5e5e;">
+            <i data-lucide="frown" style="width: 48px; height: 48px; margin: 0 auto;"></i>
         </div>
-
-        <div class="payment-option disabled">
-            <div class="payment-left">
-                <div class="payment-icon"><i data-lucide="credit-card" style="color: #00ff66;"></i></div>
-                <div>
-                    <div>СБП</div>
-                    <div style="font-size: 11px; color: var(--text-secondary)">Скоро станет доступно</div>
-                </div>
-            </div>
-            <i data-lucide="lock" style="width: 16px;"></i>
-        </div>
-
-        <div class="payment-option disabled">
-            <div class="payment-left">
-                <div class="payment-icon"><i data-lucide="wallet" style="color: #00d1ff;"></i></div>
-                <div>
-                    <div>CryptoBot</div>
-                    <div style="font-size: 11px; color: var(--text-secondary)">Скоро станет доступно</div>
-                </div>
-            </div>
-            <i data-lucide="lock" style="width: 16px;"></i>
-        </div>
-
-        <button class="btn" style="margin-top: 10px;" onclick="switchScreen('screen-subscription')">Назад</button>
+        <h2>Очень жаль...</h2>
+        <p class="subtitle">Ждем когда вернетесь с деньгами!</p>
+        <button class="btn btn-primary" style="width: 100%;" onclick="initiatePayment()"><i data-lucide="star" style="width: 16px; color:#ffb800;"></i> Купить подписку</button>
     </div>
 
-    <!-- 3. Экран авторизации (с замочком) -->
+    <!-- 3. Экран авторизации (Hash API, ID, Номер, Код) -->
     <div id="screen-auth" class="haze-container">
-        <div class="lock-container">
-            <i data-lucide="lock-keyhole" style="width: 48px; height: 48px; margin: 0 auto;"></i>
+        <h2>Авторизация</h2>
+        <p class="subtitle">Привяжите ваш Telegram аккаунт для отправки сообщений.</p>
+        
+        <div class="input-group">
+            <label>API ID (hash_id)</label>
+            <input type="text" id="auth-id" class="input-field" placeholder="Например: 2314561">
         </div>
-        <h2 id="auth-title">Вход заблокирован</h2>
-        <p class="subtitle" id="auth-subtitle">Требуется подписка для разблокировки функционала.</p>
         
-        <input type="text" id="auth-key" class="input-field" placeholder="Введите ключ активации" disabled>
+        <div class="input-group">
+            <label>API Hash (hash_api)</label>
+            <input type="text" id="auth-hash" class="input-field" placeholder="Например: d1bc2ff...">
+        </div>
         
-        <button class="btn btn-primary btn-disabled" id="btn-login" onclick="attemptLogin()" disabled>Войти</button>
-        <button class="btn" style="margin-top: 12px;" onclick="switchScreen('screen-subscription')">Назад</button>
+        <div class="input-group">
+            <label>Номер телефона</label>
+            <input type="tel" id="auth-phone" class="input-field" placeholder="+79991234567">
+        </div>
+
+        <div id="code-group" class="input-group" style="display: none; animation: slideUp 0.3s forwards;">
+            <label>Код подтверждения из Telegram</label>
+            <input type="text" id="auth-code" class="input-field" placeholder="Введите полученный код">
+        </div>
+
+        <button id="auth-action-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="requestTelegramCode()">Запросить код</button>
     </div>
 
-    <!-- 4. Экран пошаговой настройки рассылки -->
+    <!-- 4. Настройка рассылки -->
     <div id="screen-mailing" class="haze-container">
-        <h2 style="margin-bottom: 20px;">Настройка рассылки</h2>
+        <h2>Настройка рассылки</h2>
+        <p class="subtitle" id="step-indicator">Шаг 1 из 4</p>
 
         <!-- Шаг 1: Рекламный текст -->
         <div id="mail-step-1" class="step-container active">
-            <p class="subtitle" style="text-align: left; margin-bottom: 12px;">Шаг 1 из 4: Текст рассылки</p>
-            <textarea id="mail-text" class="input-field" rows="4" placeholder="Введите ваш рекламный текст здесь..."></textarea>
+            <div class="input-group">
+                <label>Текст вашей рекламы</label>
+                <textarea id="mail-text" class="input-field" rows="4" placeholder="Введите рекламный текст..."></textarea>
+            </div>
             <button class="btn btn-primary" style="width: 100%;" onclick="nextMailStep(2)">Далее</button>
         </div>
 
         <!-- Шаг 2: Выберите циклы -->
         <div id="mail-step-2" class="step-container">
-            <p class="subtitle" style="text-align: left; margin-bottom: 12px;">Шаг 2 из 4: Количество циклов</p>
-            <input type="number" id="mail-cycles" class="input-field" placeholder="Например: 5" min="1">
+            <div class="input-group">
+                <label>Количество циклов</label>
+                <input type="number" id="mail-cycles" class="input-field" placeholder="Например: 5" min="1" value="3">
+            </div>
             <button class="btn btn-primary" style="width: 100%;" onclick="nextMailStep(3)">Далее</button>
         </div>
 
         <!-- Шаг 3: Поставьте CoolDown -->
         <div id="mail-step-3" class="step-container">
-            <p class="subtitle" style="text-align: left; margin-bottom: 12px;">Шаг 3 из 4: Задержка (в секундах)</p>
-            <input type="number" id="mail-cooldown" class="input-field" placeholder="Например: 60" min="5">
+            <div class="input-group">
+                <label>Интервал отправки (в секундах)</label>
+                <input type="number" id="mail-cooldown" class="input-field" placeholder="Например: 30" min="5" value="10">
+            </div>
             <button class="btn btn-primary" style="width: 100%;" onclick="nextMailStep(4)">Далее</button>
         </div>
 
-        <!-- Шаг 4: Выберите место рассылки -->
+        <!-- Шаг 4: Выбор папок или всех чатов -->
         <div id="mail-step-4" class="step-container">
-            <p class="subtitle" style="text-align: left; margin-bottom: 12px;">Шаг 4 из 4: Место проведения</p>
-            
             <button class="btn" id="target-all" onclick="selectTarget('all')" style="width: 100%; margin-bottom: 12px; justify-content: flex-start;">
                 <i data-lucide="globe"></i> По всем чатам
             </button>
@@ -352,7 +329,6 @@
                 <i data-lucide="folder"></i> По вашим папкам
             </button>
 
-            <!-- Список папок (анимационно вылезает) -->
             <div id="folders-container" class="folders-list" style="display: none;">
                 <div class="folder-item" onclick="toggleFolder(this, 'Работа')">
                     <div class="folder-checkbox"></div>
@@ -376,40 +352,59 @@
         </div>
     </div>
 
+    <!-- 5. Экран мониторинга и прогресса рассылки -->
+    <div id="screen-status" class="haze-container">
+        <h2>Рассылка запущена</h2>
+        <p class="subtitle" style="margin-bottom: 12px;">Процесс отправки сообщений в фоне</p>
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 13px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                <span style="color:var(--text-secondary)">Статус:</span>
+                <span id="status-text" style="color:#00ff66; font-weight:600;">Выполнение...</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                <span style="color:var(--text-secondary)">Обработано циклов:</span>
+                <span id="status-cycles">0 / 0</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary)">Локация рассылки:</span>
+                <span id="status-target">Все чаты</span>
+            </div>
+        </div>
+
+        <div class="progress-bar-container">
+            <div id="status-progress" class="progress-bar-fill"></div>
+        </div>
+
+        <button class="btn" style="width:100%;" onclick="resetCampaignScreen()">Создать новую</button>
+    </div>
+
     <script>
-        // Инициализация WebApp Telegram
         const tg = window.Telegram?.WebApp;
         if(tg) {
             tg.expand();
             tg.ready();
         }
 
-        // Локальное состояние сессии
         let isSubscribed = false;
         let isAuthorized = false;
         let selectedFolders = [];
-        let selectedTargetType = ''; // 'all' или 'folders'
+        let selectedTargetType = '';
+        let campaignIntervalId = null;
 
-        // Проверяем сохраненную авторизацию при загрузке страницы
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             
-            const savedAuth = localStorage.getItem('isAuthorized');
-            const savedSub = localStorage.getItem('isSubscribed');
-
-            if (savedSub === 'true') {
-                isSubscribed = true;
-            }
-
-            if (savedAuth === 'true') {
-                isAuthorized = true;
+            // Загрузка состояния из кэша
+            if (localStorage.getItem('isAuthorized') === 'true') {
                 switchScreen('screen-mailing');
+            } else if (localStorage.getItem('isSubscribed') === 'true') {
+                switchScreen('screen-auth');
             } else {
                 switchScreen('screen-subscription');
             }
         });
 
-        // Функция плавной смены экранов
         function switchScreen(screenId) {
             document.querySelectorAll('.haze-container').forEach(el => {
                 el.classList.remove('active');
@@ -418,105 +413,126 @@
                 const target = document.getElementById(screenId);
                 target.style.display = 'block';
                 setTimeout(() => target.classList.add('active'), 50);
-            }, 300);
+            }, 250);
         }
 
-        function showPayments() {
-            switchScreen('screen-payments');
-        }
+        // Процесс оплаты через Telegram Stars (50 Stars)
+        async function initiatePayment() {
+            const userId = tg?.initDataUnsafe?.user?.id || 12345;
 
-        // Покупка через Telegram Stars (Симуляция)
-        function payWithStars() {
-            if(tg) {
-                tg.showPopup({
-                    title: 'Оплата подписки',
-                    message: 'Вы хотите купить подписку за 150 Stars?',
-                    buttons: [{id: 'pay', type: 'default', text: 'Оплатить'}, {type: 'cancel'}]
-                }, function(buttonId) {
-                    if (buttonId === 'pay') {
-                        activateSubscription();
-                    }
+            try {
+                // Запрос к нашему бэкенду для создания ссылки на инвойс
+                const res = await fetch('/api/create-invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
                 });
-            } else {
-                // Если запущен вне Telegram
-                alert('Имитация успешной транзакции Stars!');
-                activateSubscription();
+                const data = await res.json();
+
+                if (data.invoiceLink) {
+                    if (tg && tg.openInvoice) {
+                        tg.openInvoice(data.invoiceLink, (status) => {
+                            if (status === 'paid') {
+                                paymentSuccess();
+                            } else {
+                                tg.showAlert('Оплата отклонена или не завершена.');
+                            }
+                        });
+                    } else {
+                        // Если запуск вне мобильного приложения TG
+                        const mockConfirm = confirm("Симуляция: Переход по ссылке оплаты. Оплатить 50 Stars?");
+                        if (mockConfirm) paymentSuccess();
+                    }
+                } else {
+                    alert('Не удалось создать ссылку для оплаты.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Ошибка соединения с платежным сервером.');
             }
         }
 
-        function activateSubscription() {
+        function paymentSuccess() {
             isSubscribed = true;
             localStorage.setItem('isSubscribed', 'true');
-            goToAuth(true);
-        }
-
-        // Переход на экран авторизации
-        function goToAuth(hasAccess) {
-            const titleEl = document.getElementById('auth-title');
-            const subEl = document.getElementById('auth-subtitle');
-            const keyInput = document.getElementById('auth-key');
-            const loginBtn = document.getElementById('btn-login');
-            const lockIcon = document.querySelector('.lock-container');
-
-            if (isSubscribed || hasAccess) {
-                titleEl.textContent = "Авторизация";
-                subEl.textContent = "Введите ваш ключ доступа для входа в панель.";
-                keyInput.removeAttribute('disabled');
-                loginBtn.removeAttribute('disabled');
-                loginBtn.classList.remove('btn-disabled');
-                lockIcon.style.color = '#7b61ff'; // меняем цвет замочка на фиолетовый
-                lockIcon.innerHTML = '<i data-lucide="lock-open" style="width: 48px; height: 48px; margin: 0 auto;"></i>';
-                lucide.createIcons();
-            } else {
-                titleEl.textContent = "Вход заблокирован";
-                subEl.textContent = "Сначала приобретите подписку, нажав кнопку «Да».";
-                keyInput.setAttribute('disabled', 'true');
-                loginBtn.setAttribute('disabled', 'true');
-                loginBtn.classList.add('btn-disabled');
-                lockIcon.style.color = '#ff5e5e';
-                lockIcon.innerHTML = '<i data-lucide="lock-keyhole" style="width: 48px; height: 48px; margin: 0 auto;"></i>';
-                lucide.createIcons();
-            }
             switchScreen('screen-auth');
         }
 
-        // Авторизация
-        function attemptLogin() {
-            const keyVal = document.getElementById('auth-key').value.trim();
-            if(!keyVal) {
-                alert('Пожалуйста, введите ключ!');
+        // Авторизация в два шага (сначала запрашиваем код, затем шлем код)
+        async function requestTelegramCode() {
+            const apiId = document.getElementById('auth-id').value.trim();
+            const apiHash = document.getElementById('auth-hash').value.trim();
+            const phone = document.getElementById('auth-phone').value.trim();
+
+            if (!apiId || !apiHash || !phone) {
+                alert('Заполните все три поля!');
                 return;
             }
 
-            // Отправляем запрос на бэкенд для авторизации
-            const userId = tg?.initDataUnsafe?.user?.id || 12345; // Фолбэк для тестов
+            const btn = document.getElementById('auth-action-btn');
+            btn.textContent = 'Отправка...';
+            btn.disabled = true;
 
-            fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, key: keyVal })
-            })
-            .then(res => res.json())
-            .then(data => {
+            try {
+                const res = await fetch('/api/telegram-auth/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiId, apiHash, phone, userId: tg?.initDataUnsafe?.user?.id || 12345 })
+                });
+                const data = await res.json();
+
                 if (data.success) {
-                    isAuthorized = true;
+                    document.getElementById('code-group').style.display = 'flex';
+                    btn.textContent = 'Авторизоваться';
+                    btn.disabled = false;
+                    btn.onclick = verifyTelegramCode;
+                } else {
+                    alert('Ошибка при запросе кода: ' + data.error);
+                    btn.textContent = 'Запросить код';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('Не удалось связаться с сервером. Код отправлен в режиме эмуляции.');
+                document.getElementById('code-group').style.display = 'flex';
+                btn.textContent = 'Авторизоваться';
+                btn.disabled = false;
+                btn.onclick = verifyTelegramCode;
+            }
+        }
+
+        async function verifyTelegramCode() {
+            const code = document.getElementById('auth-code').value.trim();
+            if(!code) {
+                alert('Введите полученный из СМС/Telegram код!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/telegram-auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        code, 
+                        userId: tg?.initDataUnsafe?.user?.id || 12345 
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
                     localStorage.setItem('isAuthorized', 'true');
                     switchScreen('screen-mailing');
                 } else {
-                    alert('Неверный ключ доступа!');
+                    alert('Неверный код подтверждения!');
                 }
-            })
-            .catch(err => {
-                // Если бэкенд не запущен, разрешаем вход по любому ключу для демонстрации
-                isAuthorized = true;
+            } catch (err) {
+                // Демо-режим, если бэкенд выключен
                 localStorage.setItem('isAuthorized', 'true');
                 switchScreen('screen-mailing');
-            });
+            }
         }
 
-        // Пошаговая рассылка
+        // Пошаговое меню настройки рассылки
         function nextMailStep(step) {
-            // Валидация перед переходом
             if (step === 2) {
                 const text = document.getElementById('mail-text').value.trim();
                 if (!text) return alert('Введите текст рекламы!');
@@ -527,9 +543,10 @@
             }
             if (step === 4) {
                 const cooldown = document.getElementById('mail-cooldown').value;
-                if (!cooldown || cooldown < 5) return alert('Минимальный Cooldown - 5 секунд!');
+                if (!cooldown || cooldown < 5) return alert('Минимальная задержка — 5 секунд!');
             }
 
+            document.getElementById('step-indicator').textContent = `Шаг ${step} из 4`;
             document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
             document.getElementById(`mail-step-${step}`).classList.add('active');
         }
@@ -560,10 +577,10 @@
             }
         }
 
-        // Финальный запуск рассылки
-        function startMailingCampaign() {
+        // Запуск рекламной кампании
+        async function startMailingCampaign() {
             if (!selectedTargetType) {
-                alert('Выберите цель рассылки (Все чаты или Папки)!');
+                alert('Выберите область рассылки!');
                 return;
             }
             if (selectedTargetType === 'folders' && selectedFolders.length === 0) {
@@ -580,26 +597,86 @@
                 folders: selectedFolders
             };
 
-            fetch('/api/start-mailing', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
+            try {
+                const res = await fetch('/api/start-campaign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
                 if (data.success) {
-                    if (tg) {
-                        tg.showAlert('Рассылка успешно запущена!');
-                        tg.close();
-                    } else {
-                        alert('Рассылка успешно запущена!');
-                    }
+                    startMonitoring(data.campaignId);
+                } else {
+                    alert('Не удалось запустить рассылку.');
                 }
-            })
-            .catch(() => {
-                alert('Рассылка запущена (симуляция без бэкенда)!');
-            });
+            } catch (err) {
+                alert('Рассылка запущена (симуляция без сервера).');
+                // Эмуляция на клиенте
+                startClientSimulation(payload);
+            }
+        }
+
+        // Мониторинг прогресса рассылки (опрос бэкенда)
+        function startMonitoring(campaignId) {
+            switchScreen('screen-status');
+            
+            campaignIntervalId = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/campaign-status/${campaignId}`);
+                    const data = await res.json();
+
+                    if (data) {
+                        const percent = (data.current_cycle / data.total_cycles) * 100;
+                        document.getElementById('status-progress').style.width = `${percent}%`;
+                        document.getElementById('status-cycles').textContent = `${data.current_cycle} / ${data.total_cycles}`;
+                        document.getElementById('status-target').textContent = data.target_type === 'all' ? 'Все чаты' : `Папки: ${data.folders}`;
+                        
+                        if (data.status === 'completed') {
+                            document.getElementById('status-text').textContent = 'Завершено';
+                            document.getElementById('status-text').style.color = '#00ff66';
+                            clearInterval(campaignIntervalId);
+                        }
+                    }
+                } catch (e) {
+                    clearInterval(campaignIntervalId);
+                }
+            }, 1500);
+        }
+
+        // Локальная эмуляция на случай отсутствия связи
+        function startClientSimulation(payload) {
+            switchScreen('screen-status');
+            let current = 0;
+            const total = payload.cycles;
+            
+            document.getElementById('status-target').textContent = payload.target === 'all' ? 'Все чаты' : `Папки: ${payload.folders.join(', ')}`;
+            document.getElementById('status-cycles').textContent = `${current} / ${total}`;
+
+            const localInterval = setInterval(() => {
+                current++;
+                const percent = (current / total) * 100;
+                document.getElementById('status-progress').style.width = `${percent}%`;
+                document.getElementById('status-cycles').textContent = `${current} / ${total}`;
+
+                if (current >= total) {
+                    document.getElementById('status-text').textContent = 'Завершено';
+                    document.getElementById('status-text').style.color = '#00ff66';
+                    clearInterval(localInterval);
+                }
+            }, payload.cooldown * 1000);
+        }
+
+        function resetCampaignScreen() {
+            clearInterval(campaignIntervalId);
+            document.getElementById('mail-text').value = '';
+            document.getElementById('mail-cycles').value = '3';
+            document.getElementById('mail-cooldown').value = '10';
+            selectedFolders = [];
+            document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('selected'));
+            nextMailStep(1);
+            switchScreen('screen-mailing');
         }
     </script>
 </body>
-    </html>
+</html>
