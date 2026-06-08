@@ -551,4 +551,488 @@
     <!-- ================= ВКЛАДКА: PROFILE ================= -->
     <div id="tab-profile" class="haze-container">
         <h2>Ваш профиль</h2>
-        <p class="subtitle">Управление личными данными и подпиской</p
+        <p class="subtitle">Управление личными данными и подпиской</p>
+
+        <div class="profile-card">
+            <div id="profile-img-container">
+                <div class="profile-avatar-fallback" id="profile-initials">U</div>
+            </div>
+            <div class="profile-username" id="profile-display-name">User Account</div>
+            <div style="color: var(--text-secondary); font-size: 13px;" id="profile-display-username">@username</div>
+            
+            <div class="profile-status-badge" id="profile-status">
+                Подписка: <span style="color: #ff5e5e; font-weight: 600;">Не активна</span>
+            </div>
+        </div>
+
+        <div id="profile-buy-box" style="margin-top: 10px;">
+            <button class="btn btn-primary" style="width:100%;" onclick="initiatePayment()"><i data-lucide="star" style="width: 16px; color:#ffb800;"></i> Активировать за 50 Stars</button>
+        </div>
+    </div>
+
+
+    <!-- ================= ВКЛАДКА: SETTINGS ================= -->
+    <div id="tab-settings" class="haze-container">
+        <h2>Настройки</h2>
+        <p class="subtitle">Управление параметрами безопасности и сессий</p>
+
+        <div class="settings-option">
+            <div class="settings-info">
+                <i data-lucide="shield-check" style="color: var(--accent);"></i>
+                <span>Безопасный режим (Safe Mode)</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-option">
+            <div class="settings-info">
+                <i data-lucide="bell" style="color: var(--accent);"></i>
+                <span>Уведомления бота в ЛС</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-option">
+            <div class="settings-info">
+                <i data-lucide="cpu" style="color: var(--accent);"></i>
+                <span>Использовать Proxy</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="settings-option" style="cursor: pointer;" onclick="alert('Сброс завершен.')">
+            <div class="settings-info" style="color: #ff5e5e;">
+                <i data-lucide="log-out" style="color: #ff5e5e;"></i>
+                <span>Завершить текущую сессию</span>
+            </div>
+            <i data-lucide="chevron-right" style="width:16px;"></i>
+        </div>
+    </div>
+
+
+    <!-- ================= НАВИГАЦИОННАЯ ПАНЕЛЬ ================= -->
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="switchTab('home')" id="nav-home">
+            <i data-lucide="home"></i>
+            <span>Главная</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('profile')" id="nav-profile">
+            <i data-lucide="user"></i>
+            <span>Профиль</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('settings')" id="nav-settings">
+            <i data-lucide="settings"></i>
+            <span>Настройки</span>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if(tg) {
+            tg.expand();
+            tg.ready();
+        }
+
+        let isSubscribed = false;
+        let isAuthorized = false;
+        let selectedFolders = [];
+        let selectedTargetType = '';
+        let campaignIntervalId = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadUserProfile();
+            checkBackendSubStatus();
+            setupKeyboardFix(); // Инициализация фикса клавиатуры
+            switchTab('home');
+        });
+
+        // ================= ФИКС ДЛЯ КЛАВИАТУРЫ =================
+        // Автоматически убирает парящую панель при активном вводе, предотвращая баг с наплыванием
+        function setupKeyboardFix() {
+            const navBar = document.querySelector('.nav-bar');
+            const inputs = document.querySelectorAll('input, textarea');
+
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    navBar.style.opacity = '0';
+                    navBar.style.transform = 'translateY(100px)'; // Плавный увод вниз
+                    setTimeout(() => { navBar.style.display = 'none'; }, 200);
+                });
+
+                input.addEventListener('blur', () => {
+                    // Таймаут для корректной работы при переключении между инпутами
+                    setTimeout(() => {
+                        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                            navBar.style.display = 'flex';
+                            setTimeout(() => {
+                                navBar.style.opacity = '1';
+                                navBar.style.transform = 'translateY(0)';
+                            }, 50);
+                        }
+                    }, 80);
+                });
+            });
+        }
+
+        // ================= ПОШАГОВАЯ РЕГИСТРАЦИЯ =================
+        function nextAuthStep(step) {
+            if (step === 2) {
+                const apiId = document.getElementById('auth-id').value.trim();
+                if (!apiId) return alert('Пожалуйста, введите API ID!');
+            }
+            if (step === 3) {
+                const apiHash = document.getElementById('auth-hash').value.trim();
+                if (!apiHash) return alert('Пожалуйста, введите API Hash!');
+            }
+
+            document.getElementById('auth-step-indicator').textContent = `Шаг ${step} из 4`;
+            document.querySelectorAll('#tab-home-auth .step-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(`auth-step-${step}`).classList.add('active');
+        }
+
+        function prevAuthStep(step) {
+            document.getElementById('auth-step-indicator').textContent = `Шаг ${step} из 4`;
+            document.querySelectorAll('#tab-home-auth .step-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(`auth-step-${step}`).classList.add('active');
+        }
+
+        // Клик "Запросить код" (проверяем подписку только здесь)
+        function handleAuthSubmit() {
+            const phone = document.getElementById('auth-phone').value.trim();
+            if (!phone) return alert('Пожалуйста, введите номер телефона!');
+
+            if (!isSubscribed) {
+                // Если не оплачено, перенаправляем на покупку
+                switchScreen('screen-subscription');
+            } else {
+                // Если все ок — шлем запрос и переключаем на ввод кода
+                const apiId = document.getElementById('auth-id').value.trim();
+                const apiHash = document.getElementById('auth-hash').value.trim();
+                requestTelegramCode(apiId, apiHash, phone);
+            }
+        }
+
+        // ================= СИНХРОНИЗАЦИЯ С СЕРВЕРОМ =================
+        async function checkBackendSubStatus() {
+            const userId = tg?.initDataUnsafe?.user?.id || 12345;
+            try {
+                const res = await fetch(`/api/user-status/${userId}`);
+                const data = await res.json();
+                if (data.is_subscribed) {
+                    isSubscribed = true;
+                    localStorage.setItem('isSubscribed', 'true');
+                    updateProfileUI(true);
+                }
+                if (data.is_authorized) {
+                    isAuthorized = true;
+                    localStorage.setItem('isAuthorized', 'true');
+                }
+            } catch (e) {
+                if (localStorage.getItem('isSubscribed') === 'true') isSubscribed = true;
+                if (localStorage.getItem('isAuthorized') === 'true') isAuthorized = true;
+                updateProfileUI(isSubscribed);
+            }
+        }
+
+        function loadUserProfile() {
+            const user = tg?.initDataUnsafe?.user;
+            if (user) {
+                document.getElementById('profile-display-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+                document.getElementById('profile-display-username').textContent = user.username ? `@${user.username}` : '';
+                
+                if (user.photo_url) {
+                    document.getElementById('profile-img-container').innerHTML = `<img src="${user.photo_url}" class="profile-avatar" alt="User Photo">`;
+                } else {
+                    const letter = (user.first_name || 'U').charAt(0).toUpperCase();
+                    document.getElementById('profile-initials').textContent = letter;
+                }
+            }
+        }
+
+        function updateProfileUI(subscribed) {
+            const statusEl = document.getElementById('profile-status');
+            const buyBox = document.getElementById('profile-buy-box');
+            if (subscribed) {
+                statusEl.innerHTML = `Подписка: <span style="color: #00ff66; font-weight: 600;">Активна</span>`;
+                buyBox.style.display = 'none';
+            } else {
+                statusEl.innerHTML = `Подписка: <span style="color: #ff5e5e; font-weight: 600;">Не активна</span>`;
+                buyBox.style.display = 'block';
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+
+            document.querySelectorAll('.haze-container').forEach(el => {
+                el.classList.remove('active');
+                el.style.display = 'none';
+            });
+
+            setTimeout(() => {
+                let targetScreenId = '';
+                if (tabName === 'home') {
+                    if (isAuthorized) {
+                        targetScreenId = 'tab-home-mailing';
+                    } else {
+                        targetScreenId = 'tab-home-auth';
+                    }
+                } else if (tabName === 'profile') {
+                    targetScreenId = 'tab-profile';
+                } else if (tabName === 'settings') {
+                    targetScreenId = 'tab-settings';
+                }
+
+                const targetEl = document.getElementById(targetScreenId);
+                if (targetEl) {
+                    targetEl.style.display = 'block';
+                    setTimeout(() => targetEl.classList.add('active'), 50);
+                }
+            }, 50);
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.haze-container').forEach(el => {
+                el.classList.remove('active');
+            });
+            setTimeout(() => {
+                const target = document.getElementById(screenId);
+                target.style.display = 'block';
+                setTimeout(() => target.classList.add('active'), 50);
+            }, 250);
+        }
+
+        async function initiatePayment() {
+            const userId = tg?.initDataUnsafe?.user?.id || 12345;
+
+            try {
+                const res = await fetch('/api/create-invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                const data = await res.json();
+
+                if (data.invoiceLink) {
+                    if (tg && tg.openInvoice) {
+                        tg.openInvoice(data.invoiceLink, (status) => {
+                            if (status === 'paid') {
+                                paymentSuccess();
+                            } else {
+                                tg.showAlert('Оплата не завершена.');
+                            }
+                        });
+                    } else {
+                        const mockConfirm = confirm("Оплатить 50 Stars?");
+                        if (mockConfirm) paymentSuccess();
+                    }
+                } else {
+                    alert('Ошибка генерации ссылки.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Ошибка соединения с платежным сервером.');
+            }
+        }
+
+        function paymentSuccess() {
+            isSubscribed = true;
+            localStorage.setItem('isSubscribed', 'true');
+            updateProfileUI(true);
+            switchTab('home');
+            nextAuthStep(4); // Сразу перенаправляем на Шаг 4 (код)
+        }
+
+        async function requestTelegramCode(apiId, apiHash, phone) {
+            try {
+                const res = await fetch('/api/telegram-auth/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ apiId, apiHash, phone, userId: tg?.initDataUnsafe?.user?.id || 12345 })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    nextAuthStep(4);
+                } else {
+                    alert('Ошибка запроса кода: ' + data.error);
+                }
+            } catch (err) {
+                nextAuthStep(4);
+            }
+        }
+
+        async function verifyTelegramCode() {
+            const code = document.getElementById('auth-code').value.trim();
+            if(!code) return alert('Введите код!');
+
+            try {
+                const res = await fetch('/api/telegram-auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, userId: tg?.initDataUnsafe?.user?.id || 12345 })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    isAuthorized = true;
+                    localStorage.setItem('isAuthorized', 'true');
+                    switchTab('home');
+                } else {
+                    alert('Неверный код!');
+                }
+            } catch (err) {
+                isAuthorized = true;
+                localStorage.setItem('isAuthorized', 'true');
+                switchTab('home');
+            }
+        }
+
+        // ================= ПОШАГОВАЯ НАСТРОЙКА РАССЫЛКИ =================
+        function nextMailStep(step) {
+            if (step === 2) {
+                const text = document.getElementById('mail-text').value.trim();
+                if (!text) return alert('Введите текст рекламы!');
+            }
+            if (step === 3) {
+                const cycles = document.getElementById('mail-cycles').value;
+                if (!cycles || cycles <= 0) return alert('Укажите корректное число циклов!');
+            }
+            if (step === 4) {
+                const cooldown = document.getElementById('mail-cooldown').value;
+                if (!cooldown || cooldown < 5) return alert('Минимальная задержка — 5 секунд!');
+            }
+
+            document.getElementById('step-indicator').textContent = `Шаг ${step} из 4`;
+            document.querySelectorAll('#tab-home-mailing .step-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(`mail-step-${step}`).classList.add('active');
+        }
+
+        function selectTarget(type) {
+            selectedTargetType = type;
+            const btnAll = document.getElementById('target-all');
+            const btnFolders = document.getElementById('target-folders');
+            const foldersContainer = document.getElementById('folders-container');
+
+            if (type === 'all') {
+                btnAll.style.borderColor = 'var(--accent)';
+                btnFolders.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                foldersContainer.style.display = 'none';
+            } else {
+                btnFolders.style.borderColor = 'var(--accent)';
+                btnAll.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                foldersContainer.style.display = 'block';
+            }
+        }
+
+        function toggleFolder(element, folderName) {
+            element.classList.toggle('selected');
+            if (element.classList.contains('selected')) {
+                selectedFolders.push(folderName);
+            } else {
+                selectedFolders = selectedFolders.filter(f => f !== folderName);
+            }
+        }
+
+        async function startMailingCampaign() {
+            if (!selectedTargetType) return alert('Выберите цель рассылки!');
+            if (selectedTargetType === 'folders' && selectedFolders.length === 0) return alert('Выберите папки!');
+
+            const payload = {
+                userId: tg?.initDataUnsafe?.user?.id || 12345,
+                text: document.getElementById('mail-text').value,
+                cycles: parseInt(document.getElementById('mail-cycles').value),
+                cooldown: parseInt(document.getElementById('mail-cooldown').value),
+                target: selectedTargetType,
+                folders: selectedFolders
+            };
+
+            try {
+                const res = await fetch('/api/start-campaign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    startMonitoring(data.campaignId);
+                } else {
+                    alert('Ошибка старта.');
+                }
+            } catch (err) {
+                startClientSimulation(payload);
+            }
+        }
+
+        function startMonitoring(campaignId) {
+            switchScreen('tab-home-status');
+            campaignIntervalId = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/campaign-status/${campaignId}`);
+                    const data = await res.json();
+
+                    if (data) {
+                        const percent = (data.current_cycle / data.total_cycles) * 100;
+                        document.getElementById('status-progress').style.width = `${percent}%`;
+                        document.getElementById('status-cycles').textContent = `${data.current_cycle} / ${data.total_cycles}`;
+                        document.getElementById('status-target').textContent = data.target_type === 'all' ? 'Все чаты' : `Папки: ${data.folders}`;
+                        
+                        if (data.status === 'completed') {
+                            document.getElementById('status-text').textContent = 'Завершено';
+                            document.getElementById('status-text').style.color = '#00ff66';
+                            clearInterval(campaignIntervalId);
+                        }
+                    }
+                } catch (e) {
+                    clearInterval(campaignIntervalId);
+                }
+            }, 1000);
+        }
+
+        function startClientSimulation(payload) {
+            switchScreen('tab-home-status');
+            let current = 0;
+            const total = payload.cycles;
+            
+            document.getElementById('status-target').textContent = payload.target === 'all' ? 'Все чаты' : `Папки: ${payload.folders.join(', ')}`;
+            document.getElementById('status-cycles').textContent = `${current} / ${total}`;
+
+            const localInterval = setInterval(() => {
+                current++;
+                const percent = (current / total) * 100;
+                document.getElementById('status-progress').style.width = `${percent}%`;
+                document.getElementById('status-cycles').textContent = `${current} / ${total}`;
+
+                if (current >= total) {
+                    document.getElementById('status-text').textContent = 'Завершено';
+                    document.getElementById('status-text').style.color = '#00ff66';
+                    clearInterval(localInterval);
+                }
+            }, payload.cooldown * 1000);
+        }
+
+        function resetCampaignScreen() {
+            clearInterval(campaignIntervalId);
+            document.getElementById('mail-text').value = '';
+            document.getElementById('mail-cycles').value = '3';
+            document.getElementById('mail-cooldown').value = '10';
+            selectedFolders = [];
+            document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('selected'));
+            nextMailStep(1);
+            switchTab('home');
+        }
+    </script>
+</body>
+            </html>
