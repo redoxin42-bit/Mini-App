@@ -5,40 +5,38 @@ const cors = require('cors');
 const path = require('path');
 const { Telegraf, Markup } = require('telegraf');
 
+// Импорт MTProto GramJS
+const { TelegramClient, Api } = require('telegram');
+const { StringSession } = require('telegram/sessions');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const BOT_TOKEN = '8946158118:AAENzQ0R_vR2S7Bua3HQuZkSyUxOXkaeqJY';
 const MINI_APP_URL = 'https://rassylkabot.vercel.app/';
 
-// Подключение к SQLite
+// Хранилище временных клиентов в памяти для авторизации
+const activeClients = new Map();
+
+// Инициализация базы данных SQLite
 const db = new sqlite3.Database('./database.sqlite', (err) => {
-    if (err) {
-        console.error('Ошибка SQLite:', err.message);
-    } else {
-        console.log('Подключено к базе данных SQLite.');
-    }
+    if (err) console.error('Ошибка SQLite:', err.message);
 });
 
-// ПРИНУДИТЕЛЬНЫЙ СБРОС И ПЕРЕСОЗДАНИЕ БАЗЫ ДАННЫХ
 db.serialize(() => {
-    console.log('Перезапуск структуры таблиц...');
-    
-    db.run("DROP TABLE IF EXISTS users");
-    db.run("DROP TABLE IF EXISTS active_campaigns");
-
-    // Создание таблицы пользователей с чистого листа
-    db.run(`CREATE TABLE users (
+    // Таблица пользователей с хранением GramJS String Session
+    db.run(`CREATE TABLE IF NOT EXISTS users (
         telegram_id INTEGER PRIMARY KEY,
         is_subscribed INTEGER DEFAULT 0,
         api_id TEXT,
         api_hash TEXT,
         phone TEXT,
+        string_session TEXT,
         is_authorized INTEGER DEFAULT 0
     )`);
 
-    // Создание таблицы кампаний
-    db.run(`CREATE TABLE active_campaigns (
+    // Таблица запущенных рассылок
+    db.run(`CREATE TABLE IF NOT EXISTS active_campaigns (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         telegram_id INTEGER,
         text TEXT,
@@ -55,13 +53,11 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API: Проверка состояния подписки/авторизации пользователя
+// 1. Статус подписки и сессии
 app.get('/api/user-status/:id', (req, res) => {
     const userId = req.params.id;
     db.get(`SELECT * FROM users WHERE telegram_id = ?`, [userId], (err, row) => {
-        if (err || !row) {
-            return res.json({ is_subscribed: 0, is_authorized: 0 });
-        }
+        if (err || !row) return res.json({ is_subscribed: 0, is_authorized: 0 });
         res.json({
             is_subscribed: row.is_subscribed,
             is_authorized: row.is_authorized
@@ -69,17 +65,16 @@ app.get('/api/user-status/:id', (req, res) => {
     });
 });
 
-// API: Генерация инвойса для покупки подписки через Stars
+// 2. Создание платежной ссылки Telegram Stars (50 Stars)
 app.post('/api/create-invoice', async (req, res) => {
     const { userId } = req.body;
-
     try {
         const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                title: "Доступ к Рассыльщику",
-                description: "Пожизненная активация автоматизированного инструмента рассылок",
+                title: "Подписка на Маркетолог",
+                description: "Активация встроенного юзербота и инструментов планирования рассылки",
                 payload: `user_sub_${userId}_${Date.now()}`,
                 provider_token: "",
                 currency: "XTR",
@@ -98,43 +93,120 @@ app.post('/api/create-invoice', async (req, res) => {
     }
 });
 
-// API: Шаг 1 авторизации (Запрос кода)
-app.post('/api/telegram-auth/request', (req, res) => {
+// 3. MTPROTO Шаг 1: Инициализация клиента и генерация SMS кода в Telegram
+app.post('/api/telegram-auth/request', async (req, res) => {
     const { apiId, apiHash, phone, userId } = req.body;
 
-    db.run(
-        `INSERT INTO users (telegram_id, is_subscribed, api_id, api_hash, phone) 
-         VALUES (?, 1, ?, ?, ?)
-         ON CONFLICT(telegram_id) DO UPDATE SET api_id = ?, api_hash = ?, phone = ?`,
-        [userId, apiId, apiHash, phone, apiId, apiHash, phone],
-        (err) => {
-            if (err) {
-                return res.status(500).json({ success: false, error: err.message });
-            }
-            res.json({ success: true });
-        }
-    );
-});
+    try {
+        const client = new TelegramClient(new StringSession(""), Number(apiId), apiHash, {
+            connectionRetries: 5,
+        });
 
-// API: Шаг 2 авторизации (Ввод кода)
-app.post('/api/telegram-auth/verify', (req, res) => {
-    const { code, userId } = req.body;
+        await client.connect();
 
-    if (code) {
-        db.run(
-            `UPDATE users SET is_authorized = 1 WHERE telegram_id = ?`,
-            [userId],
-            (err) => {
-                if (err) return res.status(500).json({ success: false });
-                res.json({ success: true });
-            }
+        // Отправка запроса SMS на сервера Telegram
+        const result = await client.sendCode(
+            {
+                apiId: Number(apiId),
+                apiHash: apiHash
+            },
+            phone
         );
-    } else {
-        res.status(400).json({ success: false, error: 'Код не может быть пустым.' });
+
+        // Кэшируем клиента в памяти для Шага 2 (ввода кода)
+        activeClients.set(userId, {
+            client,
+            phone,
+            apiId,
+            apiHash,
+            phoneCodeHash: result.phoneCodeHash
+        });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// API: Запуск новой рекламной кампании
+// 4. MTPROTO Шаг 2: Верификация кода
+app.post('/api/telegram-auth/verify', async (req, res) => {
+    const { code, userId } = req.body;
+    const sessionData = activeClients.get(userId);
+
+    if (!sessionData) {
+        return res.status(400).json({ success: false, error: "Session expired. Please request code again." });
+    }
+
+    const { client, phone, phoneCodeHash, apiId, apiHash } = sessionData;
+
+    try {
+        // Выполняем авторизацию на серверах Telegram
+        await client.invoke(
+            new Api.auth.SignIn({
+                phoneNumber: phone,
+                phoneCodeHash: phoneCodeHash,
+                phoneCode: code
+            })
+        );
+
+        // Получаем уникальный String Session для автоматического входа в будущем
+        const stringSession = client.session.save();
+
+        db.run(
+            `INSERT INTO users (telegram_id, is_subscribed, api_id, api_hash, phone, string_session, is_authorized) 
+             VALUES (?, 1, ?, ?, ?, ?, 1)
+             ON CONFLICT(telegram_id) DO UPDATE SET api_id = ?, api_hash = ?, phone = ?, string_session = ?, is_authorized = 1`,
+            [userId, apiId, apiHash, phone, stringSession, apiId, apiHash, phone, stringSession],
+            (err) => {
+                if (err) return res.status(500).json({ success: false, error: err.message });
+                
+                // Удаляем временного клиента из ОЗУ
+                activeClients.delete(userId);
+                res.json({ success: true });
+            }
+        );
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 5. ПОЛУЧЕНИЕ РЕАЛЬНЫХ ПАПОК АККАУНТА (messages.GetDialogFilters)
+app.get('/api/get-folders/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    db.get(`SELECT * FROM users WHERE telegram_id = ?`, [userId], async (err, row) => {
+        if (err || !row || !row.string_session) {
+            return res.status(400).json({ success: false, error: "Сессия не найдена" });
+        }
+
+        try {
+            const client = new TelegramClient(new StringSession(row.string_session), Number(row.api_id), row.api_hash, {
+                connectionRetries: 3
+            });
+            await client.connect();
+
+            // Вызываем метод API Telegram
+            const filters = await client.invoke(new Api.messages.GetDialogFilters());
+
+            // Фильтруем и отдаем названия папок
+            const foldersList = filters.map(filter => {
+                if (filter.title) {
+                    return { id: filter.id, title: filter.title };
+                }
+                return null;
+            }).filter(Boolean);
+
+            await client.disconnect();
+            res.json({ success: true, folders: foldersList });
+        } catch (e) {
+            res.status(500).json({ success: false, error: e.message });
+        }
+    });
+});
+
+// 6. Запуск рассылки
 app.post('/api/start-campaign', (req, res) => {
     const { userId, text, cycles, cooldown, target, folders } = req.body;
     const foldersStr = folders ? folders.join(',') : '';
@@ -147,13 +219,14 @@ app.post('/api/start-campaign', (req, res) => {
             if (err) return res.status(500).json({ success: false });
             
             const campaignId = this.lastID;
+            // Передаем запуск реальному воркеру
             runMailingWorker(campaignId, cycles, cooldown);
             res.json({ success: true, campaignId });
         }
     );
 });
 
-// API: Получение статуса запущенной кампании
+// 7. Получение прогресса рассылки
 app.get('/api/campaign-status/:id', (req, res) => {
     const campaignId = req.params.id;
     db.get(`SELECT * FROM active_campaigns WHERE id = ?`, [campaignId], (err, row) => {
@@ -162,48 +235,88 @@ app.get('/api/campaign-status/:id', (req, res) => {
     });
 });
 
-// Воркер фонового обновления циклов рассылки
-function runMailingWorker(campaignId, totalCycles, cooldownSeconds) {
-    let currentCycle = 0;
+// 8. Разрушение сессии
+app.post('/api/logout/:userId', (req, res) => {
+    const userId = req.params.userId;
+    db.run(`UPDATE users SET is_authorized = 0, string_session = NULL WHERE telegram_id = ?`, [userId], () => {
+        res.json({ success: true });
+    });
+});
 
-    const interval = setInterval(() => {
-        currentCycle++;
-        
-        db.run(
-            `UPDATE active_campaigns SET current_cycle = ? WHERE id = ?`,
-            [currentCycle, campaignId],
-            (err) => {
-                if (err) console.error('Ошибка фонового воркера:', err);
-            }
-        );
+// РЕАЛЬНЫЙ СЕНДЕР ЮЗЕРБОТА
+async function runMailingWorker(campaignId, totalCycles, cooldownSeconds) {
+    db.get(`SELECT * FROM active_campaigns WHERE id = ?`, [campaignId], async (err, campaign) => {
+        if (err || !campaign) return;
 
-        console.log(`[Campaign ID #${campaignId}] Цикл ${currentCycle}/${totalCycles} завершен.`);
+        db.get(`SELECT * FROM users WHERE telegram_id = ?`, [campaign.telegram_id], async (err, user) => {
+            if (err || !user || !user.string_session) return;
 
-        if (currentCycle >= totalCycles) {
-            clearInterval(interval);
-            db.run(`UPDATE active_campaigns SET status = 'completed' WHERE id = ?`, [campaignId]);
-        }
-    }, cooldownSeconds * 1000);
+            // Восстанавливаем сохраненное MTProto подключение юзербота
+            const client = new TelegramClient(new StringSession(user.string_session), Number(user.api_id), user.api_hash, {
+                connectionRetries: 3
+            });
+
+            await client.connect();
+
+            let currentCycle = 0;
+            const interval = setInterval(async () => {
+                currentCycle++;
+
+                try {
+                    if (campaign.target_type === 'all') {
+                        // Получаем диалоги (Группы / Супергруппы / ЛС)
+                        const dialogs = await client.getDialogs({ limit: 50 });
+                        for (const dialog of dialogs) {
+                            if (dialog.id) {
+                                await client.sendMessage(dialog.id, { message: campaign.text });
+                            }
+                        }
+                    } else {
+                        // Сортировка по папкам
+                        const selectedFolders = campaign.folders.split(',');
+                        const filters = await client.invoke(new Api.messages.GetDialogFilters());
+
+                        for (const filter of filters) {
+                            if (filter.title && selectedFolders.includes(filter.title) && filter.includePeers) {
+                                for (const peer of filter.includePeers) {
+                                    // Отправка сообщений по списку объектов в папке
+                                    await client.sendMessage(peer, { message: campaign.text });
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Ошибка во время отправки сообщений:", e);
+                }
+
+                db.run(`UPDATE active_campaigns SET current_cycle = ? WHERE id = ?`, [currentCycle, campaignId]);
+
+                if (currentCycle >= totalCycles) {
+                    clearInterval(interval);
+                    db.run(`UPDATE active_campaigns SET status = 'completed' WHERE id = ?`, [campaignId]);
+                    await client.disconnect();
+                }
+            }, cooldownSeconds * 1000);
+        });
+    });
 }
 
 app.listen(PORT, () => {
-    console.log(`Бэкенд-сервер доступен по порту ${PORT}`);
+    console.log(`Сервер рассылки запущен на порту ${PORT}`);
 });
 
-
-// Telegram-бот
+// Телеграм-бот для поддержки
 const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
     ctx.reply(
-        `Сброс базы данных успешно выполнен! ⚙️\nВсе готово к первому использованию. Нажмите кнопку ниже, чтобы войти:`,
+        `Привет! Панель Маркетолога полностью перезапущена.\n\nНажмите на кнопку снизу для входа:`,
         Markup.keyboard([
-            [Markup.button.webApp('Открыть Mini App', MINI_APP_URL)]
+            [Markup.button.webApp('Панель управления', MINI_APP_URL)]
         ]).resize()
     );
 });
 
-// Обработка платежей в Telegram Stars
 bot.on('pre_checkout_query', (ctx) => {
     ctx.answerPreCheckoutQuery(true).catch(err => console.error(err));
 });
@@ -215,7 +328,7 @@ bot.on('successful_payment', (ctx) => {
          ON CONFLICT(telegram_id) DO UPDATE SET is_subscribed = 1`,
         [userId],
         () => {
-            ctx.reply("✨ Оплата прошла успешно! Ваша подписка активирована. Вернитесь в Mini App и продолжите авторизацию.");
+            ctx.reply("🌟 Подписка успешно куплена! Вы можете вернуться в приложение и запросить код.");
         }
     );
 });
