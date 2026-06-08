@@ -12,13 +12,25 @@
         :root {
             --bg-glow-1: rgba(123, 97, 255, 0.08);
             --bg-glow-2: rgba(0, 180, 255, 0.03);
-            /* Плотный Haze Materials - dark Regular */
             --glass-bg: rgba(18, 18, 24, 0.72);
             --glass-border: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
             --text-secondary: rgba(255, 255, 255, 0.55);
             --accent: #7b61ff;
             --accent-glow: rgba(123, 97, 255, 0.35);
+        }
+
+        /* LIGHT THEME: Haze Material - light Regular */
+        body.light-theme {
+            --bg-glow-1: rgba(123, 97, 255, 0.05);
+            --bg-glow-2: rgba(0, 180, 255, 0.04);
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(0, 0, 0, 0.08);
+            --text-primary: #111115;
+            --text-secondary: rgba(0, 0, 0, 0.55);
+            --accent: #6246ea;
+            --accent-glow: rgba(98, 70, 234, 0.2);
+            background-color: #f2f3f8;
         }
 
         * {
@@ -42,8 +54,52 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 16px 16px 110px 16px; /* Запас снизу под парящее меню */
+            padding: 76px 16px 110px 16px; /* Отступы под верхний и нижний парящие блоки */
             overflow-x: hidden;
+            transition: background-color 0.4s ease;
+        }
+
+        /* ВЕРХНЯЯ ПАНЕЛЬ С ПЕРЕКЛЮЧАТЕЛЕМ */
+        .top-bar {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            height: 54px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(170%);
+            -webkit-backdrop-filter: blur(20px) saturate(170%);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s;
+        }
+
+        .logo {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #7b61ff, #00d1ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
         }
 
         /* Контейнеры Haze */
@@ -118,10 +174,7 @@
             background: var(--accent);
             border: none;
             box-shadow: 0 4px 16px var(--accent-glow);
-        }
-
-        .btn-primary:active {
-            background: #6246ea;
+            color: #ffffff;
         }
 
         /* Формы ввода */
@@ -157,23 +210,23 @@
             background: rgba(255, 255, 255, 0.04);
         }
 
-        /* ПАРЯЩАЯ НАВИГАЦИОННАЯ ПАНЕЛЬ (FLOATING ISLAND) */
+        /* ПАРЯЩАЯ НАВИГАЦИОННАЯ ПАНЕЛЬ */
         .nav-bar {
             position: fixed;
-            bottom: 20px; /* Отсоединена от низа */
+            bottom: 20px;
             left: 20px;
             right: 20px;
             height: 64px;
-            background: rgba(18, 18, 24, 0.85); /* Плотнее матовое стекло */
+            background: var(--glass-bg);
             backdrop-filter: blur(25px) saturate(180%);
             -webkit-backdrop-filter: blur(25px) saturate(180%);
             border: 1px solid var(--glass-border);
-            border-radius: 20px; /* Закруглена со всех сторон */
+            border-radius: 20px;
             display: flex;
             justify-content: space-around;
             align-items: center;
             z-index: 1000;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
             transition: transform 0.3s ease, opacity 0.3s ease;
         }
 
@@ -195,7 +248,7 @@
             color: var(--accent);
         }
 
-        /* Пошаговые анимации */
+        /* Анимации шагов */
         .step-container {
             display: none;
             animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
@@ -210,7 +263,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Оформление вкладок профиля и настроек */
+        /* Профиль */
         .profile-card {
             display: flex;
             flex-direction: column;
@@ -275,48 +328,6 @@
             align-items: center;
             gap: 12px;
             font-size: 14px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input { 
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(255, 255, 255, 0.1);
-            transition: .3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: var(--accent);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(20px);
         }
 
         .folders-list {
@@ -384,6 +395,14 @@
 </head>
 <body>
 
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ С ПЕРЕКЛЮЧАТЕЛЕМ ТЕМЫ -->
+    <div class="top-bar">
+        <div class="logo">Marketer</div>
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <i data-lucide="sun" id="theme-icon"></i>
+        </div>
+    </div>
+
     <!-- ================= ВКЛАДКА: HOME ================= -->
     
     <!-- ПОШАГОВАЯ АВТОРИЗАЦИЯ -->
@@ -420,16 +439,16 @@
             </div>
             <div class="btn-group">
                 <button class="btn" onclick="prevAuthStep(2)">Назад</button>
-                <!-- Перехват кнопки для проверки подписки -->
-                <button class="btn btn-primary" onclick="handleAuthSubmit()">Запросить код</button>
+                <!-- При нажатии происходит проверка оплаты -->
+                <button id="auth-request-sms-btn" class="btn btn-primary" onclick="handleAuthSubmit()">Запросить код</button>
             </div>
         </div>
 
         <!-- Шаг 4: Код подтверждения -->
         <div id="auth-step-4" class="step-container">
             <div class="input-group">
-                <label>Код подтверждения</label>
-                <input type="text" id="auth-code" class="input-field" placeholder="Введите код из Telegram">
+                <label>Код подтверждения из Telegram</label>
+                <input type="text" id="auth-code" class="input-field" placeholder="Введите полученный код">
             </div>
             <button id="auth-action-btn" class="btn btn-primary" style="width: 100%;" onclick="verifyTelegramCode()">Авторизоваться</button>
         </div>
@@ -497,24 +516,8 @@
                 <i data-lucide="folder"></i> По вашим папкам
             </button>
 
-            <div id="folders-container" class="folders-list" style="display: none;">
-                <div class="folder-item" onclick="toggleFolder(this, 'Работа')">
-                    <div class="folder-checkbox"></div>
-                    <span>💼 Работа</span>
-                </div>
-                <div class="folder-item" onclick="toggleFolder(this, 'Личные')">
-                    <div class="folder-checkbox"></div>
-                    <span>👤 Личные</span>
-                </div>
-                <div class="folder-item" onclick="toggleFolder(this, 'Крипта')">
-                    <div class="folder-checkbox"></div>
-                    <span>🪙 Крипта</span>
-                </div>
-                <div class="folder-item" onclick="toggleFolder(this, 'Чаты')">
-                    <div class="folder-checkbox"></div>
-                    <span>💬 Чаты</span>
-                </div>
-            </div>
+            <!-- ДИНАМИЧЕСКИЙ СПИСОК РЕАЛЬНЫХ ПАПОК -->
+            <div id="folders-container" class="folders-list" style="display: none;"></div>
 
             <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="startMailingCampaign()">Запустить рассылку</button>
         </div>
@@ -547,7 +550,6 @@
         <button class="btn" style="width:100%;" onclick="resetCampaignScreen()">Создать новую</button>
     </div>
 
-
     <!-- ================= ВКЛАДКА: PROFILE ================= -->
     <div id="tab-profile" class="haze-container">
         <h2>Ваш профиль</h2>
@@ -570,7 +572,6 @@
         </div>
     </div>
 
-
     <!-- ================= ВКЛАДКА: SETTINGS ================= -->
     <div id="tab-settings" class="haze-container">
         <h2>Настройки</h2>
@@ -587,37 +588,14 @@
             </label>
         </div>
 
-        <div class="settings-option">
-            <div class="settings-info">
-                <i data-lucide="bell" style="color: var(--accent);"></i>
-                <span>Уведомления бота в ЛС</span>
-            </div>
-            <label class="switch">
-                <input type="checkbox" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="settings-option">
-            <div class="settings-info">
-                <i data-lucide="cpu" style="color: var(--accent);"></i>
-                <span>Использовать Proxy</span>
-            </div>
-            <label class="switch">
-                <input type="checkbox">
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="settings-option" style="cursor: pointer;" onclick="alert('Сброс завершен.')">
+        <div class="settings-option" style="cursor: pointer;" onclick="clearSessionCache()">
             <div class="settings-info" style="color: #ff5e5e;">
                 <i data-lucide="log-out" style="color: #ff5e5e;"></i>
-                <span>Завершить текущую сессию</span>
+                <span>Выйти из Telegram-сессии</span>
             </div>
             <i data-lucide="chevron-right" style="width:16px;"></i>
         </div>
     </div>
-
 
     <!-- ================= НАВИГАЦИОННАЯ ПАНЕЛЬ ================= -->
     <div class="nav-bar">
@@ -652,12 +630,39 @@
             lucide.createIcons();
             loadUserProfile();
             checkBackendSubStatus();
-            setupKeyboardFix(); // Инициализация фикса клавиатуры
+            setupKeyboardFix();
+            
+            // Инициализируем сохраненную тему
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                updateThemeIcon('light');
+            } else {
+                updateThemeIcon('dark');
+            }
+            
             switchTab('home');
         });
 
+        // ================= СМЕНА ТЕМЫ ДИЗАЙНА =================
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-theme');
+            const currentTheme = isLight ? 'light' : 'dark';
+            localStorage.setItem('theme', currentTheme);
+            updateThemeIcon(currentTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const iconEl = document.getElementById('theme-icon');
+            if (theme === 'light') {
+                iconEl.setAttribute('data-lucide', 'moon');
+            } else {
+                iconEl.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        }
+
         // ================= ФИКС ДЛЯ КЛАВИАТУРЫ =================
-        // Автоматически убирает парящую панель при активном вводе, предотвращая баг с наплыванием
         function setupKeyboardFix() {
             const navBar = document.querySelector('.nav-bar');
             const inputs = document.querySelectorAll('input, textarea');
@@ -665,12 +670,11 @@
             inputs.forEach(input => {
                 input.addEventListener('focus', () => {
                     navBar.style.opacity = '0';
-                    navBar.style.transform = 'translateY(100px)'; // Плавный увод вниз
+                    navBar.style.transform = 'translateY(100px)';
                     setTimeout(() => { navBar.style.display = 'none'; }, 200);
                 });
 
                 input.addEventListener('blur', () => {
-                    // Таймаут для корректной работы при переключении между инпутами
                     setTimeout(() => {
                         if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
                             navBar.style.display = 'flex';
@@ -684,7 +688,7 @@
             });
         }
 
-        // ================= ПОШАГОВАЯ РЕГИСТРАЦИЯ =================
+        // ================= ПОШАГОВАЯ АВТОРИЗАЦИЯ =================
         function nextAuthStep(step) {
             if (step === 2) {
                 const apiId = document.getElementById('auth-id').value.trim();
@@ -706,7 +710,7 @@
             document.getElementById(`auth-step-${step}`).classList.add('active');
         }
 
-        // Клик "Запросить код" (проверяем подписку только здесь)
+        // Срабатывает на Шаге 3: запрашиваем код (проверка подписки ПОСЛЕ ввода номера)
         function handleAuthSubmit() {
             const phone = document.getElementById('auth-phone').value.trim();
             if (!phone) return alert('Пожалуйста, введите номер телефона!');
@@ -715,14 +719,13 @@
                 // Если не оплачено, перенаправляем на покупку
                 switchScreen('screen-subscription');
             } else {
-                // Если все ок — шлем запрос и переключаем на ввод кода
                 const apiId = document.getElementById('auth-id').value.trim();
                 const apiHash = document.getElementById('auth-hash').value.trim();
                 requestTelegramCode(apiId, apiHash, phone);
             }
         }
 
-        // ================= СИНХРОНИЗАЦИЯ С СЕРВЕРОМ =================
+        // СИНХРОНИЗАЦИЯ С СЕРВЕРОМ
         async function checkBackendSubStatus() {
             const userId = tg?.initDataUnsafe?.user?.id || 12345;
             try {
@@ -851,10 +854,19 @@
             localStorage.setItem('isSubscribed', 'true');
             updateProfileUI(true);
             switchTab('home');
-            nextAuthStep(4); // Сразу перенаправляем на Шаг 4 (код)
+            
+            // Запускаем отправку кода, так как оплата подтверждена
+            const apiId = document.getElementById('auth-id').value.trim();
+            const apiHash = document.getElementById('auth-hash').value.trim();
+            const phone = document.getElementById('auth-phone').value.trim();
+            requestTelegramCode(apiId, apiHash, phone);
         }
 
         async function requestTelegramCode(apiId, apiHash, phone) {
+            const requestBtn = document.getElementById('auth-request-sms-btn');
+            requestBtn.textContent = 'Отправка...';
+            requestBtn.disabled = true;
+
             try {
                 const res = await fetch('/api/telegram-auth/request', {
                     method: 'POST',
@@ -866,16 +878,23 @@
                 if (data.success) {
                     nextAuthStep(4);
                 } else {
-                    alert('Ошибка запроса кода: ' + data.error);
+                    alert('Ошибка подключения: ' + data.error);
                 }
             } catch (err) {
-                nextAuthStep(4);
+                alert('Сбой сети при получении кода.');
+            } finally {
+                requestBtn.textContent = 'Запросить код';
+                requestBtn.disabled = false;
             }
         }
 
         async function verifyTelegramCode() {
             const code = document.getElementById('auth-code').value.trim();
             if(!code) return alert('Введите код!');
+
+            const authBtn = document.getElementById('auth-action-btn');
+            authBtn.textContent = 'Авторизация...';
+            authBtn.disabled = true;
 
             try {
                 const res = await fetch('/api/telegram-auth/verify', {
@@ -890,12 +909,43 @@
                     localStorage.setItem('isAuthorized', 'true');
                     switchTab('home');
                 } else {
-                    alert('Неверный код!');
+                    alert('Неверный код Telegram!');
                 }
             } catch (err) {
-                isAuthorized = true;
-                localStorage.setItem('isAuthorized', 'true');
-                switchTab('home');
+                alert('Ошибка сервера авторизации.');
+            } finally {
+                authBtn.textContent = 'Авторизоваться';
+                authBtn.disabled = false;
+            }
+        }
+
+        // ================= РЕАЛЬНЫЕ ПАПКИ TG =================
+        async function loadTelegramFolders() {
+            const userId = tg?.initDataUnsafe?.user?.id || 12345;
+            const container = document.getElementById('folders-container');
+            container.innerHTML = '<div style="padding: 12px; font-size:12px; text-align:center; color:var(--text-secondary)">Синхронизация папок с Telegram...</div>';
+            
+            try {
+                const res = await fetch(`/api/get-folders/${userId}`);
+                const data = await res.json();
+                
+                if (data.success && data.folders && data.folders.length > 0) {
+                    container.innerHTML = '';
+                    data.folders.forEach(folder => {
+                        const item = document.createElement('div');
+                        item.className = 'folder-item';
+                        item.onclick = function() { toggleFolder(this, folder.title); };
+                        item.innerHTML = `
+                            <div class="folder-checkbox"></div>
+                            <span>📁 ${folder.title}</span>
+                        `;
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.innerHTML = '<div style="padding: 12px; font-size:12px; text-align:center; color:#ff5e5e">Папки на аккаунте не найдены.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="padding: 12px; font-size:12px; text-align:center; color:#ff5e5e">Не удалось загрузить папки. Проверьте соединение.</div>';
             }
         }
 
@@ -933,6 +983,7 @@
                 btnFolders.style.borderColor = 'var(--accent)';
                 btnAll.style.borderColor = 'rgba(255, 255, 255, 0.08)';
                 foldersContainer.style.display = 'block';
+                loadTelegramFolders(); // Подгружаем реальные папки аккаунта при открытии
             }
         }
 
@@ -969,7 +1020,7 @@
                 if (data.success) {
                     startMonitoring(data.campaignId);
                 } else {
-                    alert('Ошибка старта.');
+                    alert('Ошибка старта рассылки.');
                 }
             } catch (err) {
                 startClientSimulation(payload);
@@ -1029,10 +1080,22 @@
             document.getElementById('mail-cycles').value = '3';
             document.getElementById('mail-cooldown').value = '10';
             selectedFolders = [];
-            document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('selected'));
             nextMailStep(1);
             switchTab('home');
         }
+
+        async function clearSessionCache() {
+            const userId = tg?.initDataUnsafe?.user?.id || 12345;
+            if (confirm('Вы уверены, что хотите завершить сессию?')) {
+                try {
+                    await fetch(`/api/logout/${userId}`, { method: 'POST' });
+                } catch(e){}
+                localStorage.removeItem('isAuthorized');
+                isAuthorized = false;
+                switchTab('home');
+                window.location.reload();
+            }
+        }
     </script>
 </body>
-            </html>
+                </html>
