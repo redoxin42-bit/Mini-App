@@ -41,7 +41,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 16px 16px 90px 16px; /* Отступ снизу для навигации */
+            justify-content: center;
+            padding: 16px 16px 110px 16px; /* Запас снизу под парящее меню */
             overflow-x: hidden;
         }
 
@@ -156,22 +157,24 @@
             background: rgba(255, 255, 255, 0.04);
         }
 
-        /* Навигационная панель Haze */
+        /* ПАРЯЩАЯ НАВИГАЦИОННАЯ ПАНЕЛЬ (FLOATING ISLAND) */
         .nav-bar {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 68px;
-            background: var(--glass-bg);
+            bottom: 20px; /* Отсоединена от низа */
+            left: 20px;
+            right: 20px;
+            height: 64px;
+            background: rgba(18, 18, 24, 0.85); /* Плотнее матовое стекло */
             backdrop-filter: blur(25px) saturate(180%);
             -webkit-backdrop-filter: blur(25px) saturate(180%);
-            border-top: 1px solid var(--glass-border);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px; /* Закруглена со всех сторон */
             display: flex;
             justify-content: space-around;
             align-items: center;
             z-index: 1000;
-            padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
 
         .nav-item {
@@ -192,7 +195,22 @@
             color: var(--accent);
         }
 
-        /* Стили вкладки Профиль */
+        /* Пошаговые анимации */
+        .step-container {
+            display: none;
+            animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Оформление вкладок профиля и настроек */
         .profile-card {
             display: flex;
             flex-direction: column;
@@ -241,7 +259,6 @@
             margin-top: 8px;
         }
 
-        /* Настройки */
         .settings-option {
             display: flex;
             align-items: center;
@@ -260,7 +277,6 @@
             font-size: 14px;
         }
 
-        /* Свитч */
         .switch {
             position: relative;
             display: inline-block;
@@ -301,21 +317,6 @@
 
         input:checked + .slider:before {
             transform: translateX(20px);
-        }
-
-        /* Шаги настройки */
-        .step-container {
-            display: none;
-            animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-
-        .step-container.active {
-            display: block;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .folders-list {
@@ -385,37 +386,58 @@
 
     <!-- ================= ВКЛАДКА: HOME ================= -->
     
-    <!-- 1. Экран авторизации (показывается сразу при входе) -->
+    <!-- ПОШАГОВАЯ АВТОРИЗАЦИЯ -->
     <div id="tab-home-auth" class="haze-container">
-        <h2>Авторизация</h2>
-        <p class="subtitle">Привяжите ваш Telegram аккаунт для запуска рассылки.</p>
+        <h2>Регистрация аккаунта</h2>
+        <p class="subtitle" id="auth-step-indicator">Шаг 1 из 4</p>
         
-        <div class="input-group">
-            <label>API ID (hash_id)</label>
-            <input type="text" id="auth-id" class="input-field" placeholder="Например: 2314561">
+        <!-- Шаг 1: API ID -->
+        <div id="auth-step-1" class="step-container active">
+            <div class="input-group">
+                <label>API ID (HASH_ID)</label>
+                <input type="text" id="auth-id" class="input-field" placeholder="Например: 2314561">
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="nextAuthStep(2)">Далее</button>
         </div>
         
-        <div class="input-group">
-            <label>API Hash (hash_api)</label>
-            <input type="text" id="auth-hash" class="input-field" placeholder="Например: d1bc2ff...">
+        <!-- Шаг 2: API HASH -->
+        <div id="auth-step-2" class="step-container">
+            <div class="input-group">
+                <label>API HASH (HASH_API)</label>
+                <input type="text" id="auth-hash" class="input-field" placeholder="Например: d1bc2ff...">
+            </div>
+            <div class="btn-group">
+                <button class="btn" onclick="prevAuthStep(1)">Назад</button>
+                <button class="btn btn-primary" onclick="nextAuthStep(3)">Далее</button>
+            </div>
         </div>
         
-        <div class="input-group">
-            <label>Номер телефона</label>
-            <input type="tel" id="auth-phone" class="input-field" placeholder="+79991234567">
+        <!-- Шаг 3: Номер телефона -->
+        <div id="auth-step-3" class="step-container">
+            <div class="input-group">
+                <label>Номер телефона</label>
+                <input type="tel" id="auth-phone" class="input-field" placeholder="+79991234567">
+            </div>
+            <div class="btn-group">
+                <button class="btn" onclick="prevAuthStep(2)">Назад</button>
+                <!-- Перехват кнопки для проверки подписки -->
+                <button class="btn btn-primary" onclick="handleAuthSubmit()">Запросить код</button>
+            </div>
         </div>
 
-        <div id="code-group" class="input-group" style="display: none; animation: slideUp 0.3s forwards;">
-            <label>Код подтверждения</label>
-            <input type="text" id="auth-code" class="input-field" placeholder="Введите код из Telegram">
+        <!-- Шаг 4: Код подтверждения -->
+        <div id="auth-step-4" class="step-container">
+            <div class="input-group">
+                <label>Код подтверждения</label>
+                <input type="text" id="auth-code" class="input-field" placeholder="Введите код из Telegram">
+            </div>
+            <button id="auth-action-btn" class="btn btn-primary" style="width: 100%;" onclick="verifyTelegramCode()">Авторизоваться</button>
         </div>
-
-        <button id="auth-action-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleAuthClick()">Запросить код</button>
     </div>
 
-    <!-- 2. Окно покупки подписки (вылетает при попытке отправить форму без подписки) -->
+    <!-- Модальное окно покупки подписки -->
     <div id="screen-subscription" class="haze-container">
-        <h2 style="margin-top: 8px;">Купить подписку?</h2>
+        <h2>Купить подписку?</h2>
         <p class="subtitle">Для старта автоматизированной рассылки необходимо активировать аккаунт.</p>
         <div class="btn-group">
             <button class="btn" onclick="switchScreen('screen-later')">Позже</button>
@@ -423,7 +445,7 @@
         </div>
     </div>
 
-    <!-- 3. Экран «Позже» -->
+    <!-- Экран «Позже» -->
     <div id="screen-later" class="haze-container">
         <div style="text-align: center; margin-bottom: 16px; color: #ff5e5e;">
             <i data-lucide="frown" style="width: 48px; height: 48px; margin: 0 auto;"></i>
@@ -433,7 +455,7 @@
         <button class="btn btn-primary" style="width: 100%;" onclick="initiatePayment()"><i data-lucide="star" style="width: 16px; color:#ffb800;"></i> Купить подписку</button>
     </div>
 
-    <!-- 4. Настройка рассылки -->
+    <!-- Настройка рассылки -->
     <div id="tab-home-mailing" class="haze-container">
         <h2>Настройка рассылки</h2>
         <p class="subtitle" id="step-indicator">Шаг 1 из 4</p>
@@ -498,7 +520,7 @@
         </div>
     </div>
 
-    <!-- 5. Мониторинг выполнения -->
+    <!-- Мониторинг выполнения -->
     <div id="tab-home-status" class="haze-container">
         <h2>Рассылка запущена</h2>
         <p class="subtitle" style="margin-bottom: 12px;">Процесс отправки сообщений в фоне</p>
@@ -529,463 +551,4 @@
     <!-- ================= ВКЛАДКА: PROFILE ================= -->
     <div id="tab-profile" class="haze-container">
         <h2>Ваш профиль</h2>
-        <p class="subtitle">Управление личными данными и подпиской</p>
-
-        <div class="profile-card">
-            <!-- Динамическая аватарка -->
-            <div id="profile-img-container">
-                <div class="profile-avatar-fallback" id="profile-initials">U</div>
-            </div>
-            <div class="profile-username" id="profile-display-name">User Account</div>
-            <div style="color: var(--text-secondary); font-size: 13px;" id="profile-display-username">@username</div>
-            
-            <div class="profile-status-badge" id="profile-status">
-                Подписка: <span style="color: #ff5e5e; font-weight: 600;">Не активна</span>
-            </div>
-        </div>
-
-        <div id="profile-buy-box" style="margin-top: 10px;">
-            <button class="btn btn-primary" style="width:100%;" onclick="initiatePayment()"><i data-lucide="star" style="width: 16px; color:#ffb800;"></i> Активировать за 50 Stars</button>
-        </div>
-    </div>
-
-
-    <!-- ================= ВКЛАДКА: SETTINGS ================= -->
-    <div id="tab-settings" class="haze-container">
-        <h2>Настройки</h2>
-        <p class="subtitle">Управление параметрами безопасности и сессий</p>
-
-        <div class="settings-option">
-            <div class="settings-info">
-                <i data-lucide="shield-check" style="color: var(--accent);"></i>
-                <span>Безопасный режим (Safe Mode)</span>
-            </div>
-            <label class="switch">
-                <input type="checkbox" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="settings-option">
-            <div class="settings-info">
-                <i data-lucide="bell" style="color: var(--accent);"></i>
-                <span>Уведомления бота в ЛС</span>
-            </div>
-            <label class="switch">
-                <input type="checkbox" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="settings-option">
-            <div class="settings-info">
-                <i data-lucide="cpu" style="color: var(--accent);"></i>
-                <span>Использовать Proxy</span>
-            </div>
-            <label class="switch">
-                <input type="checkbox">
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="settings-option" style="cursor: pointer;" onclick="alert('Сброс завершен.')">
-            <div class="settings-info" style="color: #ff5e5e;">
-                <i data-lucide="log-out" style="color: #ff5e5e;"></i>
-                <span>Завершить текущую сессию</span>
-            </div>
-            <i data-lucide="chevron-right" style="width:16px;"></i>
-        </div>
-    </div>
-
-
-    <!-- ================= НАВИГАЦИОННАЯ ПАНЕЛЬ ================= -->
-    <div class="nav-bar">
-        <div class="nav-item active" onclick="switchTab('home')" id="nav-home">
-            <i data-lucide="home"></i>
-            <span>Главная</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('profile')" id="nav-profile">
-            <i data-lucide="user"></i>
-            <span>Профиль</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('settings')" id="nav-settings">
-            <i data-lucide="settings"></i>
-            <span>Настройки</span>
-        </div>
-    </div>
-
-    <script>
-        const tg = window.Telegram?.WebApp;
-        if(tg) {
-            tg.expand();
-            tg.ready();
-        }
-
-        let isSubscribed = false;
-        let isAuthorized = false;
-        let selectedFolders = [];
-        let selectedTargetType = '';
-        let campaignIntervalId = null;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            loadUserProfile();
-            checkBackendSubStatus(); // Синхронизируем состояние подписки при старте
-            switchTab('home'); // Стартуем с домашней вкладки
-        });
-
-        // Функция синхронизации состояния подписки с базой
-        async function checkBackendSubStatus() {
-            const userId = tg?.initDataUnsafe?.user?.id || 12345;
-            try {
-                const res = await fetch(`/api/user-status/${userId}`);
-                const data = await res.json();
-                if (data.is_subscribed) {
-                    isSubscribed = true;
-                    localStorage.setItem('isSubscribed', 'true');
-                    updateProfileUI(true);
-                }
-                if (data.is_authorized) {
-                    isAuthorized = true;
-                    localStorage.setItem('isAuthorized', 'true');
-                }
-            } catch (e) {
-                // Фолбэк на локальный кэш при отсутствии связи
-                if (localStorage.getItem('isSubscribed') === 'true') isSubscribed = true;
-                if (localStorage.getItem('isAuthorized') === 'true') isAuthorized = true;
-                updateProfileUI(isSubscribed);
-            }
-        }
-
-        // Рендерим данные профиля Telegram
-        function loadUserProfile() {
-            const user = tg?.initDataUnsafe?.user;
-            if (user) {
-                document.getElementById('profile-display-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-                document.getElementById('profile-display-username').textContent = user.username ? `@${user.username}` : '';
-                
-                if (user.photo_url) {
-                    document.getElementById('profile-img-container').innerHTML = `<img src="${user.photo_url}" class="profile-avatar" alt="User Photo">`;
-                } else {
-                    const letter = (user.first_name || 'U').charAt(0).toUpperCase();
-                    document.getElementById('profile-initials').textContent = letter;
-                }
-            }
-        }
-
-        function updateProfileUI(subscribed) {
-            const statusEl = document.getElementById('profile-status');
-            const buyBox = document.getElementById('profile-buy-box');
-            if (subscribed) {
-                statusEl.innerHTML = `Подписка: <span style="color: #00ff66; font-weight: 600;">Активна</span>`;
-                buyBox.style.display = 'none';
-            } else {
-                statusEl.innerHTML = `Подписка: <span style="color: #ff5e5e; font-weight: 600;">Не активна</span>`;
-                buyBox.style.display = 'block';
-            }
-        }
-
-        // Переключение вкладок навигационной панели
-        function switchTab(tabName) {
-            // Сбрасываем активные элементы в меню
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(`nav-${tabName}`).classList.add('active');
-
-            // Прячем абсолютно все контейнеры-экраны
-            document.querySelectorAll('.haze-container').forEach(el => {
-                el.classList.remove('active');
-                el.style.display = 'none';
-            });
-
-            // Отображаем нужные экраны в соответствии с выбранной вкладкой
-            setTimeout(() => {
-                let targetScreenId = '';
-                if (tabName === 'home') {
-                    if (isAuthorized) {
-                        targetScreenId = 'tab-home-mailing';
-                    } else {
-                        targetScreenId = 'tab-home-auth';
-                    }
-                } else if (tabName === 'profile') {
-                    targetScreenId = 'tab-profile';
-                } else if (tabName === 'settings') {
-                    targetScreenId = 'tab-settings';
-                }
-
-                const targetEl = document.getElementById(targetScreenId);
-                if (targetEl) {
-                    targetEl.style.display = 'block';
-                    setTimeout(() => targetEl.classList.add('active'), 50);
-                }
-            }, 50);
-        }
-
-        // Функция плавной подгрузки вспомогательных экранов (покупка подписки)
-        function switchScreen(screenId) {
-            document.querySelectorAll('.haze-container').forEach(el => {
-                el.classList.remove('active');
-            });
-            setTimeout(() => {
-                const target = document.getElementById(screenId);
-                target.style.display = 'block';
-                setTimeout(() => target.classList.add('active'), 50);
-            }, 250);
-        }
-
-        // Перехват клика "Запросить код"
-        function handleAuthClick() {
-            const apiId = document.getElementById('auth-id').value.trim();
-            const apiHash = document.getElementById('auth-hash').value.trim();
-            const phone = document.getElementById('auth-phone').value.trim();
-
-            if (!apiId || !apiHash || !phone) {
-                alert('Заполните все поля!');
-                return;
-            }
-
-            // ПРОВЕРКА ПОДПИСКИ: если подписки нет, перенаправляем на ее приобретение
-            if (!isSubscribed) {
-                switchScreen('screen-subscription');
-            } else {
-                requestTelegramCode(apiId, apiHash, phone);
-            }
-        }
-
-        // Процесс оплаты через Telegram Stars (50 Stars)
-        async function initiatePayment() {
-            const userId = tg?.initDataUnsafe?.user?.id || 12345;
-
-            try {
-                const res = await fetch('/api/create-invoice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
-                });
-                const data = await res.json();
-
-                if (data.invoiceLink) {
-                    if (tg && tg.openInvoice) {
-                        tg.openInvoice(data.invoiceLink, (status) => {
-                            if (status === 'paid') {
-                                paymentSuccess();
-                            } else {
-                                tg.showAlert('Оплата не завершена.');
-                            }
-                        });
-                    } else {
-                        const mockConfirm = confirm("Оплатить 50 Stars?");
-                        if (mockConfirm) paymentSuccess();
-                    }
-                } else {
-                    alert('Ошибка генерации ссылки.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Ошибка соединения с платежным шлюзом.');
-            }
-        }
-
-        function paymentSuccess() {
-            isSubscribed = true;
-            localStorage.setItem('isSubscribed', 'true');
-            updateProfileUI(true);
-            // Возвращаем на Home для авторизации
-            switchTab('home');
-        }
-
-        // Запрос кода
-        async function requestTelegramCode(apiId, apiHash, phone) {
-            const btn = document.getElementById('auth-action-btn');
-            btn.textContent = 'Отправка...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/telegram-auth/request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ apiId, apiHash, phone, userId: tg?.initDataUnsafe?.user?.id || 12345 })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('code-group').style.display = 'flex';
-                    btn.textContent = 'Авторизоваться';
-                    btn.disabled = false;
-                    btn.onclick = verifyTelegramCode;
-                } else {
-                    alert('Ошибка запроса кода: ' + data.error);
-                    btn.textContent = 'Запросить код';
-                    btn.disabled = false;
-                }
-            } catch (err) {
-                // Fallback-режим
-                document.getElementById('code-group').style.display = 'flex';
-                btn.textContent = 'Авторизоваться';
-                btn.disabled = false;
-                btn.onclick = verifyTelegramCode;
-            }
-        }
-
-        async function verifyTelegramCode() {
-            const code = document.getElementById('auth-code').value.trim();
-            if(!code) return alert('Введите код!');
-
-            try {
-                const res = await fetch('/api/telegram-auth/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, userId: tg?.initDataUnsafe?.user?.id || 12345 })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    isAuthorized = true;
-                    localStorage.setItem('isAuthorized', 'true');
-                    switchTab('home');
-                } else {
-                    alert('Неверный код!');
-                }
-            } catch (err) {
-                isAuthorized = true;
-                localStorage.setItem('isAuthorized', 'true');
-                switchTab('home');
-            }
-        }
-
-        // Пошаговая настройка рассылки
-        function nextMailStep(step) {
-            if (step === 2) {
-                const text = document.getElementById('mail-text').value.trim();
-                if (!text) return alert('Введите текст рекламы!');
-            }
-            if (step === 3) {
-                const cycles = document.getElementById('mail-cycles').value;
-                if (!cycles || cycles <= 0) return alert('Укажите корректное число циклов!');
-            }
-            if (step === 4) {
-                const cooldown = document.getElementById('mail-cooldown').value;
-                if (!cooldown || cooldown < 5) return alert('Минимальная задержка — 5 секунд!');
-            }
-
-            document.getElementById('step-indicator').textContent = `Шаг ${step} из 4`;
-            document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
-            document.getElementById(`mail-step-${step}`).classList.add('active');
-        }
-
-        function selectTarget(type) {
-            selectedTargetType = type;
-            const btnAll = document.getElementById('target-all');
-            const btnFolders = document.getElementById('target-folders');
-            const foldersContainer = document.getElementById('folders-container');
-
-            if (type === 'all') {
-                btnAll.style.borderColor = 'var(--accent)';
-                btnFolders.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                foldersContainer.style.display = 'none';
-            } else {
-                btnFolders.style.borderColor = 'var(--accent)';
-                btnAll.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                foldersContainer.style.display = 'block';
-            }
-        }
-
-        function toggleFolder(element, folderName) {
-            element.classList.toggle('selected');
-            if (element.classList.contains('selected')) {
-                selectedFolders.push(folderName);
-            } else {
-                selectedFolders = selectedFolders.filter(f => f !== folderName);
-            }
-        }
-
-        async function startMailingCampaign() {
-            if (!selectedTargetType) return alert('Выберите цель рассылки!');
-            if (selectedTargetType === 'folders' && selectedFolders.length === 0) return alert('Выберите папки!');
-
-            const payload = {
-                userId: tg?.initDataUnsafe?.user?.id || 12345,
-                text: document.getElementById('mail-text').value,
-                cycles: parseInt(document.getElementById('mail-cycles').value),
-                cooldown: parseInt(document.getElementById('mail-cooldown').value),
-                target: selectedTargetType,
-                folders: selectedFolders
-            };
-
-            try {
-                const res = await fetch('/api/start-campaign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    startMonitoring(data.campaignId);
-                } else {
-                    alert('Ошибка старта.');
-                }
-            } catch (err) {
-                startClientSimulation(payload);
-            }
-        }
-
-        function startMonitoring(campaignId) {
-            switchScreen('tab-home-status');
-            campaignIntervalId = setInterval(async () => {
-                try {
-                    const res = await fetch(`/api/campaign-status/${campaignId}`);
-                    const data = await res.json();
-
-                    if (data) {
-                        const percent = (data.current_cycle / data.total_cycles) * 100;
-                        document.getElementById('status-progress').style.width = `${percent}%`;
-                        document.getElementById('status-cycles').textContent = `${data.current_cycle} / ${data.total_cycles}`;
-                        document.getElementById('status-target').textContent = data.target_type === 'all' ? 'Все чаты' : `Папки: ${data.folders}`;
-                        
-                        if (data.status === 'completed') {
-                            document.getElementById('status-text').textContent = 'Завершено';
-                            document.getElementById('status-text').style.color = '#00ff66';
-                            clearInterval(campaignIntervalId);
-                        }
-                    }
-                } catch (e) {
-                    clearInterval(campaignIntervalId);
-                }
-            }, 1000);
-        }
-
-        function startClientSimulation(payload) {
-            switchScreen('tab-home-status');
-            let current = 0;
-            const total = payload.cycles;
-            
-            document.getElementById('status-target').textContent = payload.target === 'all' ? 'Все чаты' : `Папки: ${payload.folders.join(', ')}`;
-            document.getElementById('status-cycles').textContent = `${current} / ${total}`;
-
-            const localInterval = setInterval(() => {
-                current++;
-                const percent = (current / total) * 100;
-                document.getElementById('status-progress').style.width = `${percent}%`;
-                document.getElementById('status-cycles').textContent = `${current} / ${total}`;
-
-                if (current >= total) {
-                    document.getElementById('status-text').textContent = 'Завершено';
-                    document.getElementById('status-text').style.color = '#00ff66';
-                    clearInterval(localInterval);
-                }
-            }, payload.cooldown * 1000);
-        }
-
-        function resetCampaignScreen() {
-            clearInterval(campaignIntervalId);
-            document.getElementById('mail-text').value = '';
-            document.getElementById('mail-cycles').value = '3';
-            document.getElementById('mail-cooldown').value = '10';
-            selectedFolders = [];
-            document.querySelectorAll('.folder-item').forEach(el => el.classList.remove('selected'));
-            nextMailStep(1);
-            switchTab('home');
-        }
-    </script>
-</body>
-    </html>
+        <p class="subtitle">Управление личными данными и подпиской</p
